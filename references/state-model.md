@@ -43,7 +43,7 @@ Keep this concise and always current. Include:
 - high-priority runnable tasks
 - blocked items requiring human input
 - recently completed items
-- latest planner heartbeat timestamp
+- latest planner tick timestamp
 
 ## `projects/<project_id>.md` Contract
 
@@ -117,10 +117,11 @@ Every task snapshot and relevant event should capture:
 
 - `priority`
 - `parent_task_id` (nullable)
-- `worker_backend` (`acp`)
+- `worker_backend` (`subagent`)
 - `worker_agent_id` (`codex` by default)
 - `worker_session_key`
 - `run_id`
+- `event_nonce`
 - `started_at`
 - `ended_at`
 - `verification_confidence`

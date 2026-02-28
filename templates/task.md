@@ -23,18 +23,22 @@ updated_at: {{updated_at}}
 
 ## Worker Assignment
 
-- backend: {{worker_backend}}
-- agent_id: {{worker_agent_id}}
-- session_key: {{worker_session_key}}
+- worker_backend: {{worker_backend}}
+- worker_agent_id: {{worker_agent_id}}
+- worker_session_key: {{worker_session_key}}
 - run_id: {{run_id}}
+- event_nonce: {{event_nonce}}
+- started_at: {{started_at_or_null}}
+- ended_at: {{ended_at_or_null}}
 
 ## Verification Summary
 
 - verification_complete: {{verification_complete}}
-- confidence: {{verification_confidence}}
+- verification_confidence: {{verification_confidence}}
 - checks_passed: {{checks_passed}}
 - checks_failed: {{checks_failed}}
 - why_not_fully_verifiable: {{why_not_fully_verifiable}}
+- blocked_duration_ms: {{blocked_duration_ms_or_null}}
 
 ## Evidence
 
