@@ -89,6 +89,9 @@ Common `event_type` values:
 
 - `project_created`
 - `task_created`
+- `plan_proposed`
+- `plan_approved`
+- `plan_revised`
 - `task_dispatched`
 - `task_status_changed`
 - `worker_result_ingested`

@@ -45,17 +45,47 @@ Use this skill when the user asks for:
 - Keep default updates concise: only deltas and next actions.
 - Provide detail only when asked.
 
+## Plan Gate For New Scope
+
+For any new user request that adds or changes scope (new project, new workflow, new integration, major objective change):
+
+1. Explore current environment first (non-mutating): existing projects/tasks/config/workflows.
+2. Clarify intent and constraints only for unknowns that exploration cannot resolve.
+3. Produce a decision-complete implementation plan before creating/dispatching tasks.
+4. Require semantic user approval of that plan before dispatch.
+
+Required plan format (must include all):
+- title
+- goal and measurable success criteria
+- scope (in/out)
+- task decomposition (one approved plan may become multiple tasks)
+- dependencies and ordering
+- risks/failure modes and mitigations
+- verification and acceptance checks
+- rollout/operational notes (if applicable)
+
+Semantic approval examples:
+- "yes, do this plan"
+- "looks good, proceed"
+- "approved, go ahead"
+
+If user feedback is partial/ambiguous (for example "maybe", "try something like this", "not sure"), refine the plan and ask again. Do not dispatch yet.
+
+Once approved, execute autonomously within approved scope. If scope materially changes later, re-enter this Plan Gate.
+A single approved plan may decompose into multiple tasks.
+
 ## Core Loop
 
 Run this loop continuously while runnable tasks exist:
 
-1. Ingest event (new goal, worker completion, unblock reply, cron safenet tick).
+1. Ingest event (new goal, plan approval/revision, worker completion, unblock reply, cron safenet tick).
 2. Append immutable event log entry.
-3. Refresh affected project/task snapshots.
-4. Recompute runnable task set.
-5. Schedule by priority, then round-robin across projects.
-6. Dispatch tasks to subagent workers.
-7. Wait for next event and repeat.
+3. If event introduces new scope, run Plan Gate and wait for semantic approval.
+4. Refresh affected project/task snapshots.
+5. Recompute runnable task set.
+6. Schedule by priority, then round-robin across projects.
+7. Dispatch tasks to subagent workers.
+8. Wait for next event and repeat.
 
 ## Wake Mechanisms (EVENT-DRIVEN)
 
@@ -89,6 +119,7 @@ Planner behavior is event-driven with cron safenet checks.
   - required return schema from `references/worker-contract.md`
   - **auto-notify command**: `openclaw system event --text "TASK_COMPLETE: ${taskId} ${event_nonce}" --mode now`
 - Track worker session/run identifiers in task state.
+- Never dispatch new user-originated scope until plan is semantically approved by the user.
 
 ## Completion Ingest Idempotency
 

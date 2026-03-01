@@ -21,6 +21,33 @@ If user asks "setup autopilot", "initialize autopilot", or "start autopilot":
 2. Confirm cron safenet is created at 15-minute cadence.
 3. Report created files and first runnable tasks.
 
+## Plan Gate For New User Requests
+
+Before dispatching tasks for a new request/scope:
+
+1. Perform non-mutating exploration first (existing tasks/projects/workflows/config).
+2. Clarify only high-impact unknowns not resolvable from environment.
+3. Produce a decision-complete plan (scope, acceptance criteria, dependencies, risks, rollout, verification).
+4. Get semantic user approval before dispatch.
+
+Treat these as approval:
+- "yes, do this plan"
+- "looks good, proceed"
+- "approved, go ahead"
+
+Treat these as non-approval (revise plan, ask again):
+- ambiguous/partial responses ("maybe", "roughly", "something like this")
+- new constraints without explicit proceed signal
+- unresolved tradeoff decisions
+
+After plan approval:
+- create/update project/task state
+- dispatch according to policy
+- remain autonomous within approved scope
+A single approved plan may decompose into multiple tasks.
+
+If scope materially changes later, re-enter this Plan Gate.
+
 ## Wake Mechanisms (EVENT-DRIVEN)
 
 Workers use **subagent runtime + coding-agent skill** with auto-notify, providing event-driven completion callbacks (best-effort if gateway restarts mid-run).
@@ -34,15 +61,19 @@ Recommended job name: `autopilot-safenet`
 Set/update cadence to exactly every 15 minutes:
 
 ```bash
-# Inspect existing jobs
-openclaw cron list
+# Resolve existing autopilot-safenet job id by name
+JOB_ID=$(openclaw cron list --json | jq -r '.jobs[] | select(.name=="autopilot-safenet") | .id' | head -n1)
 
 # Create when missing
-openclaw cron add --name autopilot-safenet --every 15m --system-event "Autopilot safenet tick: read .openclaw-autopilot/portfolio.md, check stale workers via subagents+sessions_history, ingest completions idempotently, dispatch queued runnable tasks, and report brief portfolio progress."
-
-# If job exists, update cadence/payload (cron edit expects job id from `openclaw cron list`)
-openclaw cron edit <autopilot-safenet-job-id> --every 15m --system-event "Autopilot safenet tick: read .openclaw-autopilot/portfolio.md, check stale workers via subagents+sessions_history, ingest completions idempotently, dispatch queued runnable tasks, and report brief portfolio progress."
+if [ -z "$JOB_ID" ]; then
+  openclaw cron add --name autopilot-safenet --every 15m --system-event "Autopilot safenet tick: read .openclaw-autopilot/portfolio.md, check stale workers via subagents+sessions_history, ingest completions idempotently, dispatch queued runnable tasks, and report brief portfolio progress."
+else
+  # Update by resolved id (cron edit requires id, not name)
+  openclaw cron edit "$JOB_ID" --name autopilot-safenet --every 15m --system-event "Autopilot safenet tick: read .openclaw-autopilot/portfolio.md, check stale workers via subagents+sessions_history, ingest completions idempotently, dispatch queued runnable tasks, and report brief portfolio progress."
+fi
 ```
+
+If `jq` is unavailable, run `openclaw cron list --json`, find the job with name `autopilot-safenet`, and use its `id` with `openclaw cron edit <id> ...`.
 
 Cron task payload should:
 - Check `.openclaw-autopilot/portfolio.md` for portfolio status
@@ -122,16 +153,18 @@ Primary trigger sources:
 - **system event from worker** (primary — `TASK_COMPLETE: ${taskId} ${event_nonce}`)
 - **subagent announce** (automatic — completion callback to planner)
 - **cron tick** (safenet — detects stale workers, idle dispatch, progress reporting)
+- **plan approval/revision** (user approves or edits proposed plan for new scope)
 - human unblock responses
 - new project/task intake from user
 
 On each trigger:
 
 1. append event(s),
-2. idempotency-check completion events against `(task_id, event_nonce)`,
-3. refresh affected snapshots,
-4. recompute runnable task set,
-5. dispatch tasks if workers available and tasks ready.
+2. if new scope, run Plan Gate and require semantic approval before dispatch,
+3. idempotency-check completion events against `(task_id, event_nonce)`,
+4. refresh affected snapshots,
+5. recompute runnable task set,
+6. dispatch tasks if workers available and tasks ready.
 
 ## Human Block Handling
 

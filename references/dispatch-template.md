@@ -31,9 +31,10 @@ ${verificationCommands}
    - For reviewing: Use vanilla Codex (no special flags)
    - For frontend work: Include Playwright e2e tests
 
-3. Run in background with PTY and auto-notify:
+3. Inside `coding-agent`, run in background with PTY and auto-notify:
 
 \`\`\`bash
+# Execute this command inside the coding-agent skill workflow.
 bash pty:true workdir:${workdir} background:true command:"codex exec --full-auto '
   ${detailedTaskInstructions}
 
@@ -105,9 +106,10 @@ Implement dark mode toggle in the Settings page with theme persistence
 
 ## Implementation Instructions
 
-1. Use `coding-agent` skill, then run Codex with auto-notify:
+1. Use `coding-agent` skill. Inside that skill workflow, run Codex with auto-notify:
 
 \`\`\`bash
+# Execute this command inside the coding-agent skill workflow.
 bash pty:true workdir:~/Projects/myapp background:true command:"codex exec --full-auto '
   Implement dark mode toggle in Settings page:
 
@@ -176,7 +178,7 @@ git worktree add -b fix/issue-99 /tmp/autopilot-task-99 main
 sessions_spawn({ runtime: "subagent", task: worker_task_for_78 })
 sessions_spawn({ runtime: "subagent", task: worker_task_for_99 })
 
-# Each worker runs Codex in its own worktree:
+# Inside each worker's coding-agent skill workflow, run Codex in its own worktree:
 bash pty:true workdir:/tmp/autopilot-task-78 background:true command:"codex exec --full-auto '...'"
 bash pty:true workdir:/tmp/autopilot-task-99 background:true command:"codex exec --full-auto '...'"
 
