@@ -26,9 +26,10 @@ If user asks "setup autopilot", "initialize autopilot", or "start autopilot":
 Before dispatching tasks for a new request/scope:
 
 1. Perform non-mutating exploration first (existing tasks/projects/workflows/config).
-2. Clarify only high-impact unknowns not resolvable from environment.
-3. Produce a decision-complete plan (scope, acceptance criteria, dependencies, risks, rollout, verification).
-4. Get semantic user approval before dispatch.
+2. Infer and write an intention statement (desired end-state and success definition behind explicit task wording).
+3. Clarify only high-impact unknowns not resolvable from environment.
+4. Produce a decision-complete plan (scope, acceptance criteria, dependencies, risks, rollout, verification).
+5. Get semantic user approval before dispatch.
 
 Treat these as approval:
 - "yes, do this plan"
@@ -86,7 +87,7 @@ Cron task payload should:
   - Active workers count and what they're working on
   - Tasks in queue (count by priority)
   - Recent completions since last report
-- Remove the cron job when portfolio is fully complete (no tasks pending/running)
+- If no active projects/objectives remain, ask user for next goal and keep safenet running
 
 ### 2. Record Worker Session Keys
 
@@ -116,8 +117,13 @@ When completely finished, run: openclaw system event --text \"TASK_COMPLETE: tas
 1. Parse event text for `TASK_COMPLETE: ${taskId} ${event_nonce}`
 2. Verify `(task_id, event_nonce)` matches a `running` task in state
 3. Read subagent announce via `subagents` tool (`action: "list"`) + `sessions_history` for `childSessionKey`
-4. Ingest worker result exactly once, update task/project/portfolio state
-5. Dispatch next runnable task
+4. Adjudicate completion:
+   - validate claimed completion against task acceptance criteria, evidence, and project intention
+   - treat `objective_gaps` as authoritative unmet criteria/outcome gaps
+   - triage `next_suggestions` + `risks_or_unknowns` into follow-up tasks, explicit defer, or explicit reject (with rationale)
+   - if acceptance criteria remain unmet, mark `needs_adjustment` (not `done`) and create recovery/follow-up tasks
+5. Ingest worker result exactly once, update task/project/portfolio state
+6. Dispatch next runnable task
 
 **Fallback trigger: Cron tick (safenet + idle dispatch + progress)**
 
@@ -128,10 +134,13 @@ When completely finished, run: openclaw system event --text \"TASK_COMPLETE: tas
    - Recompute runnable task set and priority
    - Dispatch next task batch (respecting concurrency limits)
    - Report to user: "Dispatching ${taskId}: ${taskTitle}"
-4. **Progress report**: Every cron tick, report brief status to user:
+4. **Objective gap check**: If no workers and no runnable tasks, but unresolved project objective/intention gaps exist in latest completions/suggestions:
+   - Create follow-up tasks to close gaps
+   - Recompute queue and dispatch
+5. **Progress report**: Every cron tick, report brief status to user:
    - "Portfolio: ${activeWorkerCount} active workers, ${queuedTaskCount} tasks queued, ${recentCompletionCount} completed since last update"
    - List active worker tasks (title + estimated progress if available)
-5. **Cleanup**: If all tasks done (no pending/running tasks), remove cron job `autopilot-safenet`
+6. **No-project prompt**: If no active project/objective exists, ask user for next goal and keep `autopilot-safenet` enabled
 
 ### Completion Message Flow
 
@@ -162,9 +171,10 @@ On each trigger:
 1. append event(s),
 2. if new scope, run Plan Gate and require semantic approval before dispatch,
 3. idempotency-check completion events against `(task_id, event_nonce)`,
-4. refresh affected snapshots,
-5. recompute runnable task set,
-6. dispatch tasks if workers available and tasks ready.
+4. adjudicate completion evidence against acceptance criteria/objective and synthesize follow-up tasks from meaningful suggestions/risks,
+5. refresh affected snapshots,
+6. recompute runnable task set,
+7. dispatch tasks if workers available and tasks ready.
 
 ## Human Block Handling
 

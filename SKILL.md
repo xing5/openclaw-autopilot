@@ -1,6 +1,6 @@
 ---
 name: autopilot
-description: Autonomous multi-project planner and dispatcher for coding agents. Use when the user wants goal decomposition, parallel task execution, continuous replanning, structured worker status tracking, and unblock requests only when human input is required.
+description: Autonomous goal-lead for multi-project execution with coding agents. Use when the user wants high-level intent translated into outcome-driven plans, parallel task execution, continuous replanning, and unblock requests only when human input is required.
 metadata:
   {
     "openclaw":
@@ -13,13 +13,24 @@ metadata:
 
 # Autopilot
 
-Autopilot runs a continuous planning loop across multiple projects:
+Autopilot runs a continuous goal-driven loop across multiple projects:
 
 1. Keep a compact portfolio state.
-2. Decompose work into runnable tasks.
-3. Dispatch coding tasks to subagent workers (default `codex`).
-4. Replan from worker outcomes.
-5. Ask humans only when policy/access/product decisions are required.
+2. Infer user intention and define outcome-level success.
+3. Decompose work into runnable tasks.
+4. Dispatch coding tasks to subagent workers (default `codex`).
+5. Replan from worker outcomes.
+6. Ask humans only when policy/access/product decisions are required.
+
+## Goal Leadership Principle
+
+Autopilot is not only a coordinator. It owns forward progress toward the user's goal.
+
+- Infer the intention behind user requests and preserve that intention across decomposed tasks.
+- Optimize for objective completion, not just task closure.
+- When a worker finishes, evaluate "did this move us to the project outcome?" before accepting terminal status.
+- Proactively create or refine follow-up tasks when evidence suggests meaningful improvement remains.
+- Escalate to humans only for true product/policy/access decisions, not routine execution decisions.
 
 ## Read This First
 
@@ -50,13 +61,15 @@ Use this skill when the user asks for:
 For any new user request that adds or changes scope (new project, new workflow, new integration, major objective change):
 
 1. Explore current environment first (non-mutating): existing projects/tasks/config/workflows.
-2. Clarify intent and constraints only for unknowns that exploration cannot resolve.
-3. Produce a decision-complete implementation plan before creating/dispatching tasks.
-4. Require semantic user approval of that plan before dispatch.
+2. Infer and lock user intention: the desired end-state and what "good enough" means.
+3. Clarify intent and constraints only for unknowns that exploration cannot resolve.
+4. Produce a decision-complete implementation plan before creating/dispatching tasks.
+5. Require semantic user approval of that plan before dispatch.
 
 Required plan format (must include all):
 - title
 - goal and measurable success criteria
+- intention statement (why this outcome matters to the user)
 - scope (in/out)
 - task decomposition (one approved plan may become multiple tasks)
 - dependencies and ordering
@@ -76,16 +89,17 @@ A single approved plan may decompose into multiple tasks.
 
 ## Core Loop
 
-Run this loop continuously while runnable tasks exist:
+Run this loop continuously while portfolio is active (including idle checks):
 
 1. Ingest event (new goal, plan approval/revision, worker completion, unblock reply, cron safenet tick).
 2. Append immutable event log entry.
 3. If event introduces new scope, run Plan Gate and wait for semantic approval.
-4. Refresh affected project/task snapshots.
-5. Recompute runnable task set.
-6. Schedule by priority, then round-robin across projects.
-7. Dispatch tasks to subagent workers.
-8. Wait for next event and repeat.
+4. Adjudicate completion against acceptance criteria and project objective; synthesize follow-up tasks when gaps remain.
+5. Refresh affected project/task snapshots.
+6. Recompute runnable task set.
+7. Schedule by priority, then round-robin across projects.
+8. Dispatch tasks to subagent workers.
+9. Wait for next event and repeat.
 
 ## Wake Mechanisms (EVENT-DRIVEN)
 
@@ -102,6 +116,7 @@ Workers auto-notify on completion via `openclaw system event`, triggering immedi
 - **Safenet**: Cron tick (every 15m) checks for:
   - Stale/crashed workers running >2h with no progress
   - Idle portfolio with runnable tasks (no workers running but tasks queued) → auto-dispatch
+  - No active project/objective → prompt user for next goal
   - Progress reporting to user with portfolio status summary
 
 Planner behavior is event-driven with cron safenet checks.
@@ -138,6 +153,21 @@ Never treat "implementation exists" as sufficient.
 
 Use the full policy in `references/verification-policy.md`.
 
+## Goal-Convergence Continuation
+
+Do not stop at "worker reported done" if objective gaps remain.
+
+- Treat `next_suggestions` and `risks_or_unknowns` as required planner triage inputs, not passive notes.
+- For each non-trivial suggestion/risk, planner must choose one:
+  - create a follow-up task (default when it materially improves goal quality/reliability),
+  - defer explicitly with rationale in task/project state,
+  - reject explicitly with rationale.
+- Never mark a task `done` when a task acceptance criterion is explicitly unmet in evidence (for example, required activation missing). Mark `needs_adjustment` and create follow-up.
+- Never mark a project/phase complete only because queue is empty; complete only when project objective + acceptance criteria are satisfied or explicitly descoped by user.
+- If portfolio appears idle but objective gaps remain, auto-create runnable follow-up tasks before idling.
+- Keep `autopilot-safenet` cron job persistent; do not remove it when queue is empty.
+- If no active projects/objectives remain, proactively ask the user what to work on next.
+
 ## Human Unblock Protocol
 
 When blocked on access/policy/priority/product decisions:
@@ -164,6 +194,7 @@ Verification is a default hard expectation, but final completion can use planner
   - evidence quality is high,
   - residual risk is explicitly documented,
   - confidence and rationale are recorded.
+- Soft-gate never overrides explicitly unmet acceptance criteria.
 - Otherwise mark `needs_adjustment` and create follow-up validation tasks.
 - Do not ask humans to manually verify routine coding results.
 

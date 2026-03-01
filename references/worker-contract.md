@@ -10,6 +10,7 @@ If any required field is missing, planner marks the result invalid and requests 
 - `summary` (2-8 lines, concise)
 - `evidence` (array of command outputs, artifact paths, or links)
 - `verification` object
+- `objective_gaps` (array, may be empty; each item should map to unmet acceptance criteria or outcome gaps)
 - `next_suggestions` (array, may be empty)
 - `risks_or_unknowns` (array, may be empty)
 
@@ -26,6 +27,8 @@ If any required field is missing, planner marks the result invalid and requests 
 - `done`: objective met with sufficient evidence and acceptable risk.
 - `failed`: cannot progress due to hard blocker or repeated unrecoverable errors.
 - `needs_adjustment`: partial progress or verification gap requiring revised scope/follow-up.
+
+If any acceptance criterion is unmet, include it in `objective_gaps` and use `needs_adjustment` unless planner explicitly descopes with human approval.
 
 ## Evidence Quality Rules
 
@@ -79,6 +82,10 @@ verification:
   checks_failed: [...]
   why_not_fully_verifiable: null
   confidence: high
+objective_gaps:
+- criterion: ...
+  evidence_gap: ...
+  recommended_followup: ...
 next_suggestions:
 - title: ...
   rationale: ...

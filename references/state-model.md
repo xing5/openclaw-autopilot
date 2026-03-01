@@ -64,6 +64,7 @@ Each task snapshot includes:
 - dependencies (task IDs or "none")
 - worker assignment metadata
 - status, confidence, verification summary
+- objective gap assessment and follow-up triage decision
 - evidence pointers (artifacts, logs, outputs)
 - follow-up suggestions
 
@@ -95,6 +96,9 @@ Common `event_type` values:
 - `task_dispatched`
 - `task_status_changed`
 - `worker_result_ingested`
+- `followup_task_created`
+- `objective_gap_detected`
+- `portfolio_idle_prompted`
 - `block_opened`
 - `block_resolved`
 - `checkpoint_compacted`

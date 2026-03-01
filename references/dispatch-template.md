@@ -69,6 +69,10 @@ verification:
   checks_failed: [list of failed checks]
   why_not_fully_verifiable: null
   confidence: high|medium|low
+objective_gaps:
+- criterion: [unmet criterion or outcome gap]
+  evidence_gap: [what is missing]
+  recommended_followup: [next task to close this gap]
 next_suggestions:
 - title: [follow-up task title]
   rationale: [why this matters]
@@ -156,6 +160,7 @@ verification:
   checks_failed: []
   why_not_fully_verifiable: null
   confidence: high
+objective_gaps: []
 next_suggestions:
 - title: Add dark mode to admin panel
   rationale: Settings page has dark mode, admin panel should match

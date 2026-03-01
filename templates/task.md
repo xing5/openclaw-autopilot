@@ -39,6 +39,8 @@ updated_at: {{updated_at}}
 - checks_failed: {{checks_failed}}
 - why_not_fully_verifiable: {{why_not_fully_verifiable}}
 - blocked_duration_ms: {{blocked_duration_ms_or_null}}
+- objective_gaps: {{objective_gaps_or_empty}}
+- gap_triage_decision: {{gap_triage_decision_or_none}}
 
 ## Evidence
 
