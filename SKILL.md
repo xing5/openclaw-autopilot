@@ -1,6 +1,6 @@
 ---
 name: autopilot
-description: Autonomous goal-lead for multi-project execution with coding agents. Use when the user wants high-level intent translated into outcome-driven plans, planner+worker execution, event-driven progress with occasional unblocks, delegation to Codex subagent workers with verifiable outcomes, or first-time setup requests such as "setup autopilot", "initialize autopilot", or "start autopilot".
+description: Autonomous goal-lead for multi-project execution with subagents. Use when the user wants high-level intent translated into outcome-driven plans, planner+worker execution, event-driven progress with occasional unblocks, delegation to subagent workers with verifiable outcomes, or first-time setup requests such as "setup autopilot", "initialize autopilot", or "start autopilot".
 metadata:
   {
     "openclaw":
@@ -18,9 +18,9 @@ Autopilot runs a continuous goal-driven loop across multiple projects:
 1. Keep a compact portfolio state.
 2. Infer user intention and define outcome-level success.
 3. Decompose work into runnable tasks.
-4. Dispatch coding tasks to subagent workers (default `codex`).
-5. Replan from worker outcomes.
-6. Ask humans only when policy/access/product decisions are required.
+4. Dispatch tasks to subagent workers.
+5. Proactively create or refine follow-up tasks from worker outcomes.
+6. Escalate to humans only for true product/policy/access decisions, not routine execution decisions.
 
 ## Goal Leadership Principle
 
