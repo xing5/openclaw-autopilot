@@ -104,6 +104,16 @@ Common `event_type` values:
 - `checkpoint_compacted`
 - `planner_tick`
 
+## Minimal Emission Rules
+
+Emit only the smallest set needed for traceability. Avoid duplicate events for the same state transition.
+
+- `task_status_changed`: generic status transition event (use when no specialized event applies).
+- `worker_result_ingested`: use for completion ingest transition from worker output; do not also emit `task_status_changed` for the same transition.
+- `followup_task_created`: emit once per created follow-up task.
+- `objective_gap_detected`: emit when objective/acceptance gaps are found during adjudication.
+- `portfolio_idle_prompted`: emit when planner prompts user for next goal because no active objectives remain.
+
 ## Checkpoint Log: `events/checkpoints.jsonl`
 
 Used for compact rollups without losing full history.
@@ -133,4 +143,6 @@ Every task snapshot and relevant event should capture:
 - `ended_at`
 - `verification_confidence`
 - `verification_complete` (`true|false`)
+- `goal_evaluation_method`
+- `iteration_cycles`
 - `blocked_duration_ms` (for resolved blocks when known)

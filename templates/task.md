@@ -38,18 +38,17 @@ updated_at: {{updated_at}}
 - checks_passed: {{checks_passed}}
 - checks_failed: {{checks_failed}}
 - why_not_fully_verifiable: {{why_not_fully_verifiable}}
+- goal_evaluation_method: {{goal_evaluation_method_or_empty}}
+- iteration_cycles: {{iteration_cycles_or_zero}}
 - blocked_duration_ms: {{blocked_duration_ms_or_null}}
 - objective_gaps: {{objective_gaps_or_empty}}
-- gap_triage_decision: {{gap_triage_decision_or_none}}
+- followup_decision: {{followup_decision_or_none}}
 
 ## Evidence
 
 - {{evidence_item}}
 
-## Risks and Unknowns
+## Follow-up Inputs
 
-- {{risk_item}}
-
-## Next Suggestions
-
-- {{suggestion_item}}
+- risks_or_unknowns: {{risk_items_or_empty}}
+- next_suggestions: {{suggestion_items_or_empty}}

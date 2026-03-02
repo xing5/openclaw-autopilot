@@ -15,6 +15,7 @@ updated_at: {{updated_at}}
 - needs_adjustment: 0
 - failed: 0
 - done: 0
+- canceled: 0
 
 ## Active Workstreams
 

@@ -3,32 +3,36 @@
 All worker completions must return the following structure in plain text or JSON-like form.
 If any required field is missing, planner marks the result invalid and requests correction.
 
-## Required Fields
+## Core Fields (Always Required)
 
 - `task_id`
+- `event_nonce` (must match the nonce persisted in task state at dispatch time)
 - `status` (`done|failed|needs_adjustment`)
 - `summary` (2-8 lines, concise)
 - `evidence` (array of command outputs, artifact paths, or links)
-- `verification` object
-- `objective_gaps` (array, may be empty; each item should map to unmet acceptance criteria or outcome gaps)
-- `next_suggestions` (array, may be empty)
-- `risks_or_unknowns` (array, may be empty)
+- `verification` object with:
+  - `confidence` (`high|medium|low`)
+  - `complete` (`true|false`)
 
-## Verification Object
+## Conditional Fields (Required When Applicable)
 
-- `checks_attempted` (array of commands/check names)
-- `checks_passed` (array)
-- `checks_failed` (array)
-- `why_not_fully_verifiable` (string or null)
-- `confidence` (`high|medium|low`)
+- `objective_gaps` (required when acceptance criteria/outcome gaps remain; omit or empty when none)
+- `risks_or_unknowns` (required when non-trivial risk/unknown exists; omit or empty when none)
+- `verification.why_not_fully_verifiable` (required when `verification.complete` is `false`)
 
-## Status Semantics
+## Diagnostic Fields (Optional, But Recommended)
 
-- `done`: objective met with sufficient evidence and acceptable risk.
-- `failed`: cannot progress due to hard blocker or repeated unrecoverable errors.
-- `needs_adjustment`: partial progress or verification gap requiring revised scope/follow-up.
+- `verification.checks_attempted`
+- `verification.checks_passed`
+- `verification.checks_failed`
+- `verification.goal_evaluation_method`
+- `verification.iteration_cycles`
+- `next_suggestions` (non-blocking, opportunistic improvements only)
 
-If any acceptance criterion is unmet, include it in `objective_gaps` and use `needs_adjustment` unless planner explicitly descopes with human approval.
+## Status Field
+
+- `status` is an enum with allowed values: `done|failed|needs_adjustment`.
+- Decision policy for choosing status values is defined in `references/verification-policy.md`.
 
 ## Evidence Quality Rules
 
@@ -69,6 +73,7 @@ When task requires cluster/GPU/runtime environment:
 
 ```text
 task_id: task-...
+event_nonce: nonce-...
 status: done|failed|needs_adjustment
 summary:
 - ...
@@ -77,18 +82,23 @@ evidence:
   output: ...
 - artifact: ...
 verification:
-  checks_attempted: [...]
-  checks_passed: [...]
-  checks_failed: [...]
-  why_not_fully_verifiable: null
   confidence: high
-objective_gaps:
-- criterion: ...
-  evidence_gap: ...
-  recommended_followup: ...
-next_suggestions:
-- title: ...
-  rationale: ...
-risks_or_unknowns:
-- ...
+  complete: true
+# required if verification.complete == false
+# why_not_fully_verifiable: "..."
+# optional diagnostics
+# checks_attempted: [...]
+# checks_passed: [...]
+# checks_failed: [...]
+# goal_evaluation_method: [...]
+# iteration_cycles: 3
+# include when gaps exist
+# objective_gaps:
+# - ...
+# include when risks/unknowns exist
+# risks_or_unknowns:
+# - ...
+# optional
+# next_suggestions:
+# - ...
 ```

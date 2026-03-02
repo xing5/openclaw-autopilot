@@ -1,6 +1,6 @@
 ---
 name: autopilot
-description: Autonomous goal-lead for multi-project execution with coding agents. Use when the user wants high-level intent translated into outcome-driven plans, parallel task execution, continuous replanning, and unblock requests only when human input is required.
+description: Autonomous goal-lead for multi-project execution with coding agents. Use when the user wants high-level intent translated into outcome-driven plans, planner+worker execution, event-driven progress with occasional unblocks, delegation to Codex subagent workers with verifiable outcomes, or first-time setup requests such as "setup autopilot", "initialize autopilot", or "start autopilot".
 metadata:
   {
     "openclaw":
@@ -40,15 +40,12 @@ Autopilot is not only a coordinator. It owns forward progress toward the user's 
 - Load runbook: `references/runbook.md`
 - Load dispatch template: `references/dispatch-template.md`
 
-## Trigger Conditions
-
-Use this skill when the user asks for:
-
-- autonomous orchestration across projects
-- planner + worker execution
-- event-driven progress with occasional unblocks
-- delegation to Codex subagent workers with verifiable outcomes
-- first-time setup phrases like "setup autopilot", "initialize autopilot", "start autopilot"
+Normative map:
+- Orchestration loop / lifecycle policy: `SKILL.md`
+- Operational procedures / command patterns: `references/runbook.md`
+- Worker return schema (fields/types): `references/worker-contract.md`
+- Verification and completion decision policy: `references/verification-policy.md`
+- Dispatch prompt structure: `references/dispatch-template.md`
 
 ## Control Surface
 
@@ -131,6 +128,7 @@ Planner behavior is event-driven with cron safenet checks.
   - task objective and scope boundaries
   - explicit acceptance criteria
   - required verification commands
+  - explicit test-driven worker flow: define goal-evaluation method first, then iterate implement -> verify -> repair until checks pass or hard blocker is proven
   - required return schema from `references/worker-contract.md`
   - **auto-notify command**: `openclaw system event --text "TASK_COMPLETE: ${taskId} ${event_nonce}" --mode now`
 - Track worker session/run identifiers in task state.
@@ -145,24 +143,14 @@ Planner behavior is event-driven with cron safenet checks.
 
 ## Verification-First Completion
 
-Never treat "implementation exists" as sufficient.
-
-- For coding tasks, require terminal-verifiable checks.
-- For frontend tasks, require unit + integration + Playwright e2e by default.
-- For remote/GPU tasks, require executed SSH-session evidence.
-
-Use the full policy in `references/verification-policy.md`.
+Verification and completion adjudication policy is canonical in `references/verification-policy.md`.
+`SKILL.md` only defines orchestration behavior; do not duplicate decision rules here.
 
 ## Goal-Convergence Continuation
 
 Do not stop at "worker reported done" if objective gaps remain.
 
-- Treat `next_suggestions` and `risks_or_unknowns` as required planner triage inputs, not passive notes.
-- For each non-trivial suggestion/risk, planner must choose one:
-  - create a follow-up task (default when it materially improves goal quality/reliability),
-  - defer explicitly with rationale in task/project state,
-  - reject explicitly with rationale.
-- Never mark a task `done` when a task acceptance criterion is explicitly unmet in evidence (for example, required activation missing). Mark `needs_adjustment` and create follow-up.
+- Apply follow-up triage and status decisions per `references/verification-policy.md`.
 - Never mark a project/phase complete only because queue is empty; complete only when project objective + acceptance criteria are satisfied or explicitly descoped by user.
 - If portfolio appears idle but objective gaps remain, auto-create runnable follow-up tasks before idling.
 - Keep `autopilot-safenet` cron job persistent; do not remove it when queue is empty.
@@ -188,15 +176,8 @@ Accept normal free-text user replies, map to the open `BLOCK_ID`, log resolution
 
 ## Soft-Gate Judgment Rule
 
-Verification is a default hard expectation, but final completion can use planner judgment.
-
-- If verification is incomplete, planner may mark `done` only when:
-  - evidence quality is high,
-  - residual risk is explicitly documented,
-  - confidence and rationale are recorded.
-- Soft-gate never overrides explicitly unmet acceptance criteria.
-- Otherwise mark `needs_adjustment` and create follow-up validation tasks.
-- Do not ask humans to manually verify routine coding results.
+Soft-gate rules are canonical in `references/verification-policy.md`.
+Use that policy directly for all soft-gate decisions.
 
 ## Safety Rails
 
@@ -209,4 +190,6 @@ Verification is a default hard expectation, but final completion can use planner
 
 - Snapshot templates: `templates/portfolio.md`, `templates/project.md`, `templates/task.md`
 - State validation: `scripts/validate_state.sh`
+- Doc boundary validation: `scripts/validate_doc_boundaries.sh`
+- Unified checks: `scripts/check_all.sh`
 - Snapshot compaction helper: `scripts/compact_snapshots.sh`

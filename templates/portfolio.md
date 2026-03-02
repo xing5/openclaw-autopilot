@@ -1,6 +1,7 @@
 # Autopilot Portfolio
 
 Updated: {{updated_at}}
+Planner Tick: {{planner_tick_at}}
 
 ## Active Projects
 

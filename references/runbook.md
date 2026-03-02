@@ -23,31 +23,21 @@ If user asks "setup autopilot", "initialize autopilot", or "start autopilot":
 
 ## Plan Gate For New User Requests
 
-Before dispatching tasks for a new request/scope:
+Use this section as operational execution for the Plan Gate policy in `SKILL.md`.
+For approval semantics, required plan format, and scope-change rules, follow `SKILL.md` as canonical.
 
+Before dispatching tasks for a new request/scope:
 1. Perform non-mutating exploration first (existing tasks/projects/workflows/config).
 2. Infer and write an intention statement (desired end-state and success definition behind explicit task wording).
 3. Clarify only high-impact unknowns not resolvable from environment.
 4. Produce a decision-complete plan (scope, acceptance criteria, dependencies, risks, rollout, verification).
 5. Get semantic user approval before dispatch.
 
-Treat these as approval:
-- "yes, do this plan"
-- "looks good, proceed"
-- "approved, go ahead"
-
-Treat these as non-approval (revise plan, ask again):
-- ambiguous/partial responses ("maybe", "roughly", "something like this")
-- new constraints without explicit proceed signal
-- unresolved tradeoff decisions
-
 After plan approval:
 - create/update project/task state
 - dispatch according to policy
 - remain autonomous within approved scope
 A single approved plan may decompose into multiple tasks.
-
-If scope materially changes later, re-enter this Plan Gate.
 
 ## Wake Mechanisms (EVENT-DRIVEN)
 
@@ -118,10 +108,8 @@ When completely finished, run: openclaw system event --text \"TASK_COMPLETE: tas
 2. Verify `(task_id, event_nonce)` matches a `running` task in state
 3. Read subagent announce via `subagents` tool (`action: "list"`) + `sessions_history` for `childSessionKey`
 4. Adjudicate completion:
-   - validate claimed completion against task acceptance criteria, evidence, and project intention
-   - treat `objective_gaps` as authoritative unmet criteria/outcome gaps
-   - triage `next_suggestions` + `risks_or_unknowns` into follow-up tasks, explicit defer, or explicit reject (with rationale)
-   - if acceptance criteria remain unmet, mark `needs_adjustment` (not `done`) and create recovery/follow-up tasks
+   - validate payload schema against `references/worker-contract.md`
+   - adjudicate completion/status and follow-up triage using `references/verification-policy.md`
 5. Ingest worker result exactly once, update task/project/portfolio state
 6. Dispatch next runnable task
 
@@ -134,7 +122,7 @@ When completely finished, run: openclaw system event --text \"TASK_COMPLETE: tas
    - Recompute runnable task set and priority
    - Dispatch next task batch (respecting concurrency limits)
    - Report to user: "Dispatching ${taskId}: ${taskTitle}"
-4. **Objective gap check**: If no workers and no runnable tasks, but unresolved project objective/intention gaps exist in latest completions/suggestions:
+4. **Objective gap check**: If no workers and no runnable tasks, but unresolved project objective/intention gaps exist in latest completions:
    - Create follow-up tasks to close gaps
    - Recompute queue and dispatch
 5. **Progress report**: Every cron tick, report brief status to user:
@@ -171,7 +159,7 @@ On each trigger:
 1. append event(s),
 2. if new scope, run Plan Gate and require semantic approval before dispatch,
 3. idempotency-check completion events against `(task_id, event_nonce)`,
-4. adjudicate completion evidence against acceptance criteria/objective and synthesize follow-up tasks from meaningful suggestions/risks,
+4. adjudicate completion evidence against acceptance criteria/objective and synthesize follow-up tasks from objective gaps and meaningful risk/suggestion inputs,
 5. refresh affected snapshots,
 6. recompute runnable task set,
 7. dispatch tasks if workers available and tasks ready.
