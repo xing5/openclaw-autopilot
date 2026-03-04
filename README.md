@@ -22,21 +22,26 @@ A lightweight watchdog cron (every 4h) catches stuck/orphaned workers as a safet
 
 | Layer | What | How |
 |-------|------|-----|
-| **Portfolio State** | `autopilot/portfolio.json` | Projects, tasks, success criteria, status |
+| **Portfolio State** | `autopilot-state/portfolio.json` | Projects, tasks, success criteria, status |
 | **Event Loop** | AGENTS.md trigger hook | Reacts to `autopilot:*` worker completions |
 | **Worker Dispatch** | `sessions_spawn` | Isolated subagent sessions per task |
 
 ## Install
 
-1. Install the skill in your OpenClaw agent
-2. Say `autopilot status` — the agent will auto-run the setup from `references/install.md`
-
-Or manually:
 ```bash
-mkdir -p autopilot/outcomes
-echo '{"projects":[]}' > autopilot/portfolio.json
+# Add to your OpenClaw workspace
+mkdir -p ~/.openclaw/workspace/skills
+ln -s /path/to/openclaw-autopilot ~/.openclaw/workspace/skills/autopilot
+
+# Create runtime state
+cd ~/.openclaw/workspace
+mkdir -p autopilot-state/outcomes
+echo '{"projects":[]}' > autopilot-state/portfolio.json
 ```
-Then add the AGENTS.md hook and watchdog cron (see `references/install.md`).
+
+Then add the AGENTS.md hook and watchdog cron — see [`references/install.md`](references/install.md) for full steps.
+
+Or just say `autopilot status` and the agent will self-install on first use.
 
 ## Usage
 
@@ -55,6 +60,24 @@ autopilot drop <project>
 - **Outcome evaluation** — Judge actual output against success criteria, not just task completion
 - **Minimal escalation** — Only escalate for product/policy/access decisions
 - **Event-driven** — React to worker completions, don't poll
+
+## Repo Structure
+
+```
+SKILL.md              ← Skill definition (frontmatter + instructions)
+README.md             ← This file
+LICENSE               ← MIT
+references/
+  install.md          ← Full installation guide
+```
+
+Runtime state (created during install, not in repo):
+```
+<workspace>/
+  autopilot-state/
+    portfolio.json    ← Project state
+    outcomes/         ← Worker result files
+```
 
 ## Version History
 

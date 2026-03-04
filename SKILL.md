@@ -17,20 +17,26 @@ metadata:
 You are operating as Autopilot — a **goal leader**, not a task coordinator.
 Your job is to drive projects to completion with minimal human escalation.
 
-## Setup
+## First-Time Setup
 
-If `autopilot/portfolio.json` doesn't exist yet, read `references/install.md` and follow
-the installation steps before doing anything else.
+If `autopilot-state/portfolio.json` doesn't exist, run the installation:
+
+1. `mkdir -p autopilot-state/outcomes`
+2. Write `autopilot-state/portfolio.json` with `{"projects":[]}`
+3. Add the AGENTS.md trigger hook (see `references/install.md`)
+4. Set up the watchdog cron (see `references/install.md`)
+
+State lives in `autopilot-state/` (workspace root), not inside this skill directory.
 
 ## Core Loop
 
 Every Autopilot turn follows this cycle:
 
-1. **Read state** — `autopilot/portfolio.json`
+1. **Read state** — `autopilot-state/portfolio.json`
 2. **Evaluate** — What just happened? (worker result, user command, or watchdog sweep)
 3. **Decide** — What moves the goal forward?
 4. **Act** — Spawn worker, update state, escalate, or mark complete
-5. **Write state** — Update `autopilot/portfolio.json`
+5. **Write state** — Update `autopilot-state/portfolio.json`
 
 ## Event-Driven Architecture
 
@@ -39,9 +45,9 @@ Autopilot is **not** cron-driven. The primary mechanism is a chain reaction:
 ```
 User adds project
   → Spawn Worker A
-    → Worker A finishes, announces back to main session
+    → Worker A completes → announces back to main session
       → AGENTS.md trigger fires → evaluate outcome → spawn Worker B
-        → Worker B finishes, announces back
+        → Worker B completes → announces back
           → evaluate → spawn Worker C → ...until goal met
 ```
 
@@ -49,11 +55,11 @@ Each `sessions_spawn` with `announce` delivery injects the worker result as a me
 in the main session, triggering a new agent turn. The AGENTS.md hook recognizes
 `autopilot:*` labels and loads this skill.
 
-A low-frequency watchdog cron (every 4h) catches stuck/orphaned workers only.
+A low-frequency watchdog cron (every 4h) catches stuck/orphaned workers as a safety net.
 
 ## Portfolio State
 
-File: `autopilot/portfolio.json`
+File: `autopilot-state/portfolio.json`
 
 ```json
 {
@@ -71,7 +77,7 @@ File: `autopilot/portfolio.json`
           "description": "Specific actionable work",
           "status": "pending|running|done|failed",
           "worker_label": "autopilot:proj-1:task-1",
-          "outcome_file": "autopilot/outcomes/proj-1-task-1.md",
+          "outcome_file": "autopilot-state/outcomes/proj-1-task-1.md",
           "attempts": 0,
           "created_at": "ISO timestamp",
           "completed_at": null
@@ -91,9 +97,9 @@ Task statuses: `pending`, `running`, `done`, `failed`
 When a subagent announcement arrives with label matching `autopilot:*`:
 
 1. Parse the label: `autopilot:{project_id}:{task_id}`
-2. Read `autopilot/portfolio.json`
+2. Read `autopilot-state/portfolio.json`
 3. Read the worker's result from the announcement
-4. Save outcome to `autopilot/outcomes/{project_id}-{task_id}.md`
+4. Save outcome to `autopilot-state/outcomes/{project_id}-{task_id}.md`
 5. Evaluate against project goal and success criteria:
 
 ```
