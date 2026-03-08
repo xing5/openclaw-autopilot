@@ -1,19 +1,17 @@
 # Autopilot
 
-🧭 Continuous goal-driven project manager for [OpenClaw](https://github.com/nichochar/openclaw) agents.
+🧭 Autonomous goal-driven project manager for [OpenClaw](https://github.com/nichochar/openclaw) agents.
 
-Autopilot decomposes user goals into tasks, dispatches subagent workers, evaluates outcomes against success criteria, and chains follow-up work automatically — driving projects to completion with minimal human escalation.
+Autopilot decomposes user goals into tasks, dispatches subagent workers, verifies outcomes against acceptance criteria, and chains follow-up work automatically — driving projects to completion with minimal human interruption.
 
 ## Architecture
 
-**Event-driven, not polling.** Uses OpenClaw's `sessions_spawn` announce mechanism as the primary loop:
+**Event-driven, not polling.** Uses OpenClaw's `sessions_spawn` announce mechanism:
 
 ```
-User adds project
-  → Decompose goal → Spawn Worker
-    → Worker completes → Announces back to main session
-      → Evaluate outcome → Spawn next worker → ...
-        → Goal met → Notify user
+User describes project → Plan gate (confirm goal + criteria) → Spawn workers
+  → Worker completes → Verify outcome → Spawn next → ...
+    → All criteria met → Notify user
 ```
 
 A lightweight watchdog cron (every 4h) catches stuck/orphaned workers as a safety net.
@@ -22,9 +20,18 @@ A lightweight watchdog cron (every 4h) catches stuck/orphaned workers as a safet
 
 | Layer | What | How |
 |-------|------|-----|
-| **Portfolio State** | `autopilot-state/portfolio.json` | Projects, tasks, success criteria, status |
-| **Event Loop** | AGENTS.md trigger hook | Reacts to `autopilot:*` worker completions |
+| **Portfolio State** | `autopilot-state/portfolio.json` | Projects, tasks, acceptance criteria, status |
+| **Event Loop** | AGENTS.md hook + skill description | Reacts to `autopilot:*` worker completions |
 | **Worker Dispatch** | `sessions_spawn` | Isolated subagent sessions per task |
+
+### Key Features
+
+- **Plan Gate** — Presents inferred goal, success criteria, and initial tasks for user confirmation before starting
+- **Verification-First** — Worker outcomes evaluated against acceptance criteria with evidence, not narratives
+- **Worker Context Inheritance** — Each worker receives a condensed brief of prior outcomes and learnings
+- **Silent Operation** — No user notifications except on completion, blocks, or significant pivots
+- **Portfolio Archival** — Completed projects archived to keep active state lean
+- **Structured Escalation** — Blocks include what was tried, what's needed, impact, and suggested options
 
 ## Install
 
@@ -35,54 +42,54 @@ ln -s /path/to/openclaw-autopilot ~/.openclaw/workspace/skills/autopilot
 
 # Create runtime state
 cd ~/.openclaw/workspace
-mkdir -p autopilot-state/outcomes
+mkdir -p autopilot-state/outcomes autopilot-state/archive
 echo '{"projects":[]}' > autopilot-state/portfolio.json
 ```
 
-Then add the AGENTS.md hook and watchdog cron — see [`references/install.md`](references/install.md) for full steps.
+Then add the AGENTS.md hook and watchdog cron — see [`references/install.md`](references/install.md).
 
-Or just say `autopilot status` and the agent will self-install on first use.
+Or just mention "autopilot" to the agent — it will self-install on first use.
 
 ## Usage
 
-```
-autopilot add project: Build a landing page for my SaaS
-autopilot status
-autopilot pause <project>
-autopilot resume <project>
-autopilot drop <project>
-```
+Autopilot activates naturally through conversation. No rigid commands needed:
+
+- *"Build a REST API for user management, handle it autonomously"*
+- *"What's the status on my projects?"*
+- *"Pause work on the API project"*
+- *"Drop the landing page project"*
 
 ## Design Principles
 
 - **Goal leadership** — Autopilot owns forward progress, not just task coordination
+- **Verification-first** — Evidence against acceptance criteria, not "it should work"
+- **Silent operation** — Work quietly, notify only on completion or blocks
 - **Intention preservation** — Every task traces back to the user's original goal
-- **Outcome evaluation** — Judge actual output against success criteria, not just task completion
 - **Minimal escalation** — Only escalate for product/policy/access decisions
-- **Event-driven** — React to worker completions, don't poll
 
 ## Repo Structure
 
 ```
-SKILL.md              ← Skill definition (frontmatter + instructions)
+SKILL.md              ← Skill definition (frontmatter + full instructions)
 README.md             ← This file
 LICENSE               ← MIT
 references/
-  install.md          ← Full installation guide
+  install.md          ← Installation guide
 ```
 
 Runtime state (created during install, not in repo):
 ```
 <workspace>/
   autopilot-state/
-    portfolio.json    ← Project state
+    portfolio.json    ← Active project state
     outcomes/         ← Worker result files
+    archive/          ← Completed/dropped project records
 ```
 
 ## Version History
 
-- **v3** — Event-driven architecture using `sessions_spawn` announce chain reaction. JSON portfolio state. Simplified from v1/v2.
-- **v1/v2** — ACP/Codex-based workers, markdown state files, verification-heavy. Deprecated.
+- **v3** — Event-driven architecture, plan gate, verification-first completion, worker context inheritance, portfolio archival, natural skill invocation (no rigid commands), structured escalation protocol.
+- **v1/v2** — ACP/Codex-based workers, markdown state files. Deprecated.
 
 ## License
 

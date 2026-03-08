@@ -33,7 +33,7 @@ cd autopilot && git checkout v3
 
 ```bash
 cd ~/.openclaw/workspace
-mkdir -p autopilot-state/outcomes
+mkdir -p autopilot-state/outcomes autopilot-state/archive
 echo '{"projects":[]}' > autopilot-state/portfolio.json
 ```
 
@@ -44,20 +44,20 @@ State lives in `autopilot-state/` (workspace root), separate from the skill code
 Append this block to your `AGENTS.md`:
 
 ```markdown
-## 🤖 Autopilot (always active)
+## 🧭 Autopilot (worker completion hook)
 
 When a subagent completion announcement arrives with label starting with `autopilot:`,
 read the autopilot skill and follow its instructions to evaluate the outcome,
-update portfolio state, and spawn follow-up workers.
-
-When the user says `autopilot add project:`, `autopilot status`, `autopilot pause`,
-`autopilot resume`, or `autopilot drop`, read the autopilot skill and handle the command.
+update portfolio state, and spawn follow-up workers. Work silently — do not notify
+the user unless the project is complete, blocked, or requires a significant pivot.
 ```
 
-This is necessary because Autopilot needs to react on **every turn** where a worker
-announces back — not just when the user explicitly triggers it. Skills are normally
-lazy-loaded by description matching, but the AGENTS.md hook ensures the agent always
-recognizes autopilot events.
+This hook is necessary because worker completions arrive as announce messages that
+trigger a new agent turn. The hook ensures the agent recognizes `autopilot:*` labels
+and loads the skill to continue the chain reaction.
+
+User-facing interactions (starting projects, checking status, pausing) are handled
+naturally through the skill's description matching — no hook needed for those.
 
 ### 4. Set up watchdog cron
 
@@ -79,20 +79,24 @@ cron add job:{
 
 ### 5. Verify
 
-Say `autopilot status` — you should see "No active projects."
+Ask something like "do I have any autopilot projects running?" — the agent should
+naturally load the skill and report no active projects.
 
 ---
 
 ## How It Works
 
 ```
-User: "autopilot add project: Build a landing page"
+User: "I need to build a landing page for my SaaS, can you handle it?"
   │
   ▼
-Agent reads SKILL.md (via AGENTS.md hook or skill description match)
+Agent matches skill description → reads SKILL.md → activates Autopilot
   │
   ▼
-Decomposes goal → Creates portfolio entry → Spawns worker via sessions_spawn
+Presents plan: inferred goal, success criteria, initial tasks
+  │
+  ▼
+User confirms → Creates portfolio entry → Spawns first worker(s)
   │
   ▼
 Worker runs in isolated session, completes task
@@ -101,10 +105,10 @@ Worker runs in isolated session, completes task
 Result announced back to main session (sessions_spawn announce mechanism)
   │
   ▼
-AGENTS.md hook fires → Agent reads SKILL.md → Evaluates outcome
+AGENTS.md hook fires → Agent reads SKILL.md → Verifies outcome against criteria
   │
-  ├─ Goal not met → Spawn next worker (chain continues)
-  └─ Goal met → Mark complete, notify user
+  ├─ Goal not met → Spawn next worker (chain continues silently)
+  └─ Goal met → Notify user with completion summary
 ```
 
 The watchdog cron (every 4h) is only a safety net — not the primary driver.
@@ -113,7 +117,7 @@ The watchdog cron (every 4h) is only a safety net — not the primary driver.
 
 ## Uninstalling
 
-1. Remove the `## 🤖 Autopilot` section from AGENTS.md
+1. Remove the `## 🧭 Autopilot` section from AGENTS.md
 2. Remove the `autopilot-watchdog` cron job
 3. Remove the skill: `rm -rf ~/.openclaw/workspace/skills/autopilot` (or remove symlink)
 4. Optionally remove state: `rm -rf ~/.openclaw/workspace/autopilot-state/`
