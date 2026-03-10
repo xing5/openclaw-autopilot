@@ -251,6 +251,11 @@ This keeps the active portfolio lean. Archived projects remain accessible for re
 
 ## Spawning Workers
 
+Workers are **subagent sessions** created via `sessions_spawn`. Each worker is a
+temporary OpenClaw agent that runs in isolation, has access to all standard tools,
+and **announces its result back** to the main session when done — driving the
+event-driven chain reaction.
+
 ```
 sessions_spawn(
   task: "<full context brief — see Worker Task Prompt Requirements>",
@@ -259,37 +264,55 @@ sessions_spawn(
 )
 ```
 
-### Coding Tasks — Use Coding Agents
+### How Workers Execute Coding Tasks
 
-For tasks that involve writing, modifying, or reviewing code, instruct the worker
-to use the **coding-agent skill** — spawning Codex, Claude Code, or Pi as a
-background terminal process in the target project directory.
+**Important architectural distinction:** The worker subagent is NOT a coding agent.
+It's an orchestrator that *uses* a coding agent as a tool. The two-level flow:
 
-Include these instructions in the worker's task prompt:
+```
+Autopilot (you)
+  │
+  ├─ sessions_spawn → Worker subagent (OpenClaw agent, announces back ✅)
+  │                      │
+  │                      ├─ Reads coding-agent skill
+  │                      ├─ exec pty:true → Codex/Claude Code/Pi (terminal process, no callback ❌)
+  │                      ├─ Monitors via process:log/poll
+  │                      ├─ Collects output as evidence
+  │                      ├─ Runs verification (tests, lint, build)
+  │                      └─ Reports results in its response
+  │
+  └─ Worker response announced back → triggers next Autopilot turn
+```
+
+- **Worker subagent** = OpenClaw session with full tool access. Created by `sessions_spawn`.
+  Announces results back to the main session. This is what drives the event chain.
+- **Coding agent** (Codex/Claude Code/Pi) = terminal process spawned by the worker via
+  `exec pty:true`. No callback mechanism — the worker must poll `process:log` to monitor
+  and `process:poll` to detect completion. This is a tool the worker uses, not the worker itself.
+
+Include these instructions in the worker's task prompt for coding tasks:
 
 ```
 You have access to the coding-agent skill. For this coding task:
 1. Read the coding-agent skill (SKILL.md) for setup and usage instructions
-2. Use `exec` with `pty:true` to run a coding agent (codex, claude, or pi)
+2. Use `exec` with `pty:true` to spawn a coding agent (codex, claude, or pi)
    in the target project directory
-3. Use background mode for longer tasks, monitor with process:log
-4. Collect the coding agent's output as evidence
-5. Run verification commands (tests, lint, build) after the coding agent finishes
-6. Report results with evidence including command outputs and test results
+3. Use background mode, then monitor with process:log and process:poll
+4. When the coding agent finishes, collect its output as evidence
+5. Run verification commands (tests, lint, build) yourself — don't trust
+   the coding agent's self-reported success
+6. Report: summary, files changed, tests passed/failed, evidence, confidence
 
-Example:
-  exec pty:true workdir:/path/to/project command:"codex exec --full-auto 'Your task'"
+Target directory: <workdir>
+Coding agent: <codex|claude|pi>
+Setup commands: <any required setup>
 ```
-
-Also include in the worker task prompt:
-- The target project/repo directory (workdir)
-- Which coding agent to prefer (codex/claude/pi), if the user has a preference
-- Any project-specific setup commands (e.g., `npm install`, `mix deps.get`)
 
 ### Non-Coding Tasks
 
 For research, analysis, documentation, or other non-coding work, workers operate
 normally with their standard tools (web_search, web_fetch, read, write, exec, etc.).
+No coding agent needed — the worker does the work directly.
 
 ### General
 
