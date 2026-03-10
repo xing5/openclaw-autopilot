@@ -259,7 +259,41 @@ sessions_spawn(
 )
 ```
 
-Use a cheaper/faster model for execution tasks when appropriate.
+### Coding Tasks — Use Coding Agents
+
+For tasks that involve writing, modifying, or reviewing code, instruct the worker
+to use the **coding-agent skill** — spawning Codex, Claude Code, or Pi as a
+background terminal process in the target project directory.
+
+Include these instructions in the worker's task prompt:
+
+```
+You have access to the coding-agent skill. For this coding task:
+1. Read the coding-agent skill (SKILL.md) for setup and usage instructions
+2. Use `exec` with `pty:true` to run a coding agent (codex, claude, or pi)
+   in the target project directory
+3. Use background mode for longer tasks, monitor with process:log
+4. Collect the coding agent's output as evidence
+5. Run verification commands (tests, lint, build) after the coding agent finishes
+6. Report results with evidence including command outputs and test results
+
+Example:
+  exec pty:true workdir:/path/to/project command:"codex exec --full-auto 'Your task'"
+```
+
+Also include in the worker task prompt:
+- The target project/repo directory (workdir)
+- Which coding agent to prefer (codex/claude/pi), if the user has a preference
+- Any project-specific setup commands (e.g., `npm install`, `mix deps.get`)
+
+### Non-Coding Tasks
+
+For research, analysis, documentation, or other non-coding work, workers operate
+normally with their standard tools (web_search, web_fetch, read, write, exec, etc.).
+
+### General
+
+Use a cheaper/faster model for workers when appropriate.
 Start with 1-3 workers, learn from outcomes, then expand.
 
 ---
