@@ -35,20 +35,20 @@ A lightweight watchdog cron (every 4h) catches stuck/orphaned workers as a safet
 
 ## Install
 
+**Option A: Dedicated autopilot agent (recommended)**
 ```bash
-# Add to your OpenClaw workspace
-mkdir -p ~/.openclaw/workspace/skills
-ln -s /path/to/openclaw-autopilot ~/.openclaw/workspace/skills/autopilot
-
-# Create runtime state
-cd ~/.openclaw/workspace
-mkdir -p autopilot-state/outcomes autopilot-state/archive
-echo '{"projects":[]}' > autopilot-state/portfolio.json
+# Create agent, copy AGENTS.md, add skill, create state dir
+# See references/install.md for full steps
 ```
 
-Then add the AGENTS.md hook and watchdog cron — see [`references/install.md`](references/install.md).
+**Option B: Skill on existing agent**
+```bash
+mkdir -p ~/.openclaw/workspace/skills
+ln -s /path/to/openclaw-autopilot ~/.openclaw/workspace/skills/autopilot
+# Then add AGENTS.md hook + watchdog cron
+```
 
-Or just mention "autopilot" to the agent — it will self-install on first use.
+See [`references/install.md`](references/install.md) for complete setup instructions.
 
 ## Usage
 
@@ -74,7 +74,8 @@ SKILL.md              ← Skill definition (frontmatter + full instructions)
 README.md             ← This file
 LICENSE               ← MIT
 references/
-  install.md          ← Installation guide
+  install.md          ← Installation guide (Option A: dedicated agent, Option B: skill)
+  AGENTS.md           ← Drop-in AGENTS.md for dedicated autopilot agents
 ```
 
 Runtime state (created during install, not in repo):

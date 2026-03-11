@@ -1,32 +1,112 @@
 # Autopilot — Installation Guide
 
-## Quick Install
+## Deployment Options
 
-### 1. Add skill to OpenClaw
+### Option A: Dedicated Autopilot Agent (Recommended)
 
-**Option A — Symlink (recommended for development):**
+A standalone agent whose sole job is autopilot — receives projects, dispatches workers,
+drives to completion. No distractions from general-purpose agent behavior.
+
+### Option B: Skill on a General Agent
+
+Add autopilot as one capability on an existing agent. The agent can chat, do ad-hoc
+tasks, AND run autopilot projects. Requires an AGENTS.md hook for worker completions.
+
+---
+
+## Option A: Dedicated Agent Setup
+
+### 1. Create the agent
+
+```bash
+openclaw agents add --id autopilot-agent --name "Autopilot"
+```
+
+Or use an existing agent dedicated to this purpose.
+
+### 2. Replace AGENTS.md
+
+Copy the dedicated AGENTS.md into the agent's workspace:
+
+```bash
+cp /path/to/openclaw-autopilot/references/AGENTS.md <agent-workspace>/AGENTS.md
+```
+
+This AGENTS.md is purpose-built for autopilot — it includes the setup gate, dispatch
+protocol, and references back to the skill for full instructions.
+
+### 3. Add skill to the agent's workspace
+
+```bash
+mkdir -p <agent-workspace>/skills
+ln -s /path/to/openclaw-autopilot <agent-workspace>/skills/autopilot
+```
+
+### 4. Create runtime state directory
+
+```bash
+cd <agent-workspace>
+mkdir -p autopilot-state/outcomes autopilot-state/archive
+echo '{"projects":[]}' > autopilot-state/portfolio.json
+```
+
+### 5. Set up watchdog cron
+
+Create a safety-net cron job (catches stuck/orphaned workers):
+
+```
+cron add job:{
+  "name": "autopilot-watchdog",
+  "schedule": { "kind": "every", "everyMs": 14400000 },
+  "sessionTarget": "isolated",
+  "payload": {
+    "kind": "agentTurn",
+    "message": "Autopilot watchdog sweep. Read autopilot-state/portfolio.json. Check for: (1) tasks stuck in 'running' status for >30 minutes with no active session, (2) projects with all tasks verified but project still 'active' — evaluate if goal is met, (3) any stale state. Fix what you find. If the portfolio is empty or nothing needs attention, reply with exactly NO_REPLY and do nothing else."
+  },
+  "delivery": { "mode": "announce" },
+  "enabled": true
+}
+```
+
+### 6. Configure main agent to delegate
+
+Your main (conversational) agent can delegate projects to the autopilot agent.
+Add the autopilot agent to your main agent's subagent allowlist in `openclaw.json`:
+
+```json
+{
+  "agents": {
+    "list": [
+      {
+        "id": "main",
+        "subagents": { "allowAgents": ["autopilot-agent"] }
+      },
+      {
+        "id": "autopilot-agent",
+        "workspace": "<agent-workspace>",
+        "agentDir": "<agent-dir>"
+      }
+    ]
+  }
+}
+```
+
+Or use `sessions_send` from your main agent to communicate with the autopilot agent.
+
+### 7. Verify
+
+Send a message to the autopilot agent — it should check setup, complete any missing
+steps automatically, and report ready.
+
+---
+
+## Option B: Skill on General Agent
+
+### 1. Add skill
+
 ```bash
 mkdir -p ~/.openclaw/workspace/skills
 ln -s /path/to/openclaw-autopilot ~/.openclaw/workspace/skills/autopilot
-```
-
-**Option B — Clone directly:**
-```bash
-mkdir -p ~/.openclaw/workspace/skills
-cd ~/.openclaw/workspace/skills
-git clone <repo-url> autopilot
-cd autopilot && git checkout v3
-```
-
-**Option C — Use `skills.load.extraDirs` in `openclaw.json`:**
-```json
-{
-  "skills": {
-    "load": {
-      "extraDirs": ["/path/to/openclaw-autopilot"]
-    }
-  }
-}
 ```
 
 ### 2. Create runtime state directory
@@ -37,9 +117,7 @@ mkdir -p autopilot-state/outcomes autopilot-state/archive
 echo '{"projects":[]}' > autopilot-state/portfolio.json
 ```
 
-State lives in `autopilot-state/` (workspace root), separate from the skill code.
-
-### 3. Add AGENTS.md trigger hook
+### 3. Add AGENTS.md hook
 
 Append this block to your `AGENTS.md`:
 
@@ -52,62 +130,42 @@ update portfolio state, and spawn follow-up workers. Work silently — do not no
 the user unless the project is complete, blocked, or requires a significant pivot.
 ```
 
-This hook is necessary because worker completions arrive as announce messages that
-trigger a new agent turn. The hook ensures the agent recognizes `autopilot:*` labels
-and loads the skill to continue the chain reaction.
-
-User-facing interactions (starting projects, checking status, pausing) are handled
-naturally through the skill's description matching — no hook needed for those.
-
 ### 4. Set up watchdog cron
 
-Create a safety-net cron job (catches stuck/orphaned workers):
-
-```
-cron add job:{
-  "name": "autopilot-watchdog",
-  "schedule": { "kind": "every", "everyMs": 14400000 },
-  "sessionTarget": "isolated",
-  "payload": {
-    "kind": "agentTurn",
-    "message": "Autopilot watchdog sweep. Read autopilot-state/portfolio.json. Check for: (1) tasks stuck in 'running' status for >30 minutes with no active session, (2) projects with all tasks done but project still 'active' — evaluate if goal is met, (3) any stale state. Fix what you find. If the portfolio is empty or nothing needs attention, reply with exactly NO_REPLY and do nothing else."
-  },
-  "delivery": { "mode": "announce" },
-  "enabled": true
-}
-```
+Same as Option A, step 5.
 
 ### 5. Verify
 
-Ask something like "do I have any autopilot projects running?" — the agent should
-naturally load the skill and report no active projects.
+Ask "do I have any autopilot projects running?" — the agent should naturally load
+the skill and report no active projects.
 
 ---
 
 ## How It Works
 
 ```
-User: "I need to build a landing page for my SaaS, can you handle it?"
+User: "Build a landing page for my SaaS, handle it autonomously"
   │
   ▼
-Agent matches skill description → reads SKILL.md → activates Autopilot
+Agent activates Autopilot (skill match or AGENTS.md hook)
   │
   ▼
 Presents plan: inferred goal, success criteria, initial tasks
   │
   ▼
-User confirms → Creates portfolio entry → Spawns first worker(s)
+User confirms → Creates portfolio entry → Spawns worker subagent(s)
   │
   ▼
-Worker runs in isolated session, completes task
+Worker subagent spawns coding agent → implements → self-verifies
   │
   ▼
-Result announced back to main session (sessions_spawn announce mechanism)
+Worker reports VERIFIED or BLOCKED → announces back to autopilot session
   │
   ▼
-AGENTS.md hook fires → Agent reads SKILL.md → Verifies outcome against criteria
+Autopilot evaluates goal progress
   │
-  ├─ Goal not met → Spawn next worker (chain continues silently)
+  ├─ More work needed → Spawn next worker (chain continues silently)
+  ├─ Blocked → Escalate to user with specifics
   └─ Goal met → Notify user with completion summary
 ```
 
@@ -117,7 +175,13 @@ The watchdog cron (every 4h) is only a safety net — not the primary driver.
 
 ## Uninstalling
 
+**Dedicated agent:**
+1. Remove the watchdog cron job
+2. Optionally remove the agent: `openclaw agents remove --id autopilot-agent`
+3. Remove workspace/state if no longer needed
+
+**Skill on general agent:**
 1. Remove the `## 🧭 Autopilot` section from AGENTS.md
-2. Remove the `autopilot-watchdog` cron job
-3. Remove the skill: `rm -rf ~/.openclaw/workspace/skills/autopilot` (or remove symlink)
+2. Remove the watchdog cron job
+3. Remove the skill: `rm -rf ~/.openclaw/workspace/skills/autopilot`
 4. Optionally remove state: `rm -rf ~/.openclaw/workspace/autopilot-state/`
